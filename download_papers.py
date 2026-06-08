@@ -28,6 +28,8 @@ config = dotenv_values(Path(__file__).resolve().parent /".env")
 EMAIL = config.get("EMAIL", "").strip()
 print(f"Using email: '{EMAIL}' (set EMAIL in .env or use --email to override)")
 
+_debug = False
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (compatible; PaperDownloader/1.0; "
@@ -101,12 +103,15 @@ def unique_name(base: str, seen: dict) -> str:
 def download_url(url: str, session: requests.Session, timeout: int = 30) -> bytes | None:
     try:
         r = session.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
+        ct = r.headers.get("Content-Type", "")
+        if _debug:
+            print(f"    [download_url] {url} → status={r.status_code} content-type={ct!r} size={len(r.content)} header={r.content[:8]!r}")
         if r.status_code == 200 and len(r.content) > 1024:
-            ct = r.headers.get("Content-Type", "")
             if "pdf" in ct or r.content[:4] == b"%PDF":
                 return r.content
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"    [download_url] exception: {e}")
     return None
 
 
@@ -114,23 +119,30 @@ def try_unpaywall(doi: str, session: requests.Session) -> bytes | None:
     try:
         url = f"https://api.unpaywall.org/v2/{doi}?email={EMAIL}"
         r = session.get(url, headers=HEADERS, timeout=15)
+        if _debug:
+            print(f"  [unpaywall] status={r.status_code}")
         if r.status_code != 200:
             return None
         data = r.json()
         best = data.get("best_oa_location") or {}
         pdf_url = best.get("url_for_pdf") or best.get("url")
+        if _debug:
+            print(f"  [unpaywall] best_oa_location pdf_url={pdf_url}")
         if pdf_url:
             result = download_url(pdf_url, session)
             if result:
                 return result
         for loc in data.get("oa_locations", []):
             pdf_url = loc.get("url_for_pdf") or loc.get("url")
+            if _debug:
+                print(f"  [unpaywall] trying oa_location pdf_url={pdf_url}")
             if pdf_url:
                 result = download_url(pdf_url, session)
                 if result:
                     return result
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"  [unpaywall] exception: {e}")
     return None
 
 
@@ -141,18 +153,26 @@ def try_europe_pmc(doi: str, session: requests.Session) -> bytes | None:
             f"?query=DOI:{doi}&format=json&resultType=core"
         )
         r = session.get(search_url, headers=HEADERS, timeout=15)
+        if _debug:
+            print(f"  [europe_pmc] status={r.status_code}")
         if r.status_code != 200:
             return None
         results = r.json().get("resultList", {}).get("result", [])
+        if _debug:
+            print(f"  [europe_pmc] results={len(results)}")
         for item in results:
             full_text_url_list = item.get("fullTextUrlList", {}).get("fullTextUrl", [])
             for full_text_url in full_text_url_list:
                 if full_text_url.get("documentStyle") == "pdf":
-                    result = download_url(full_text_url.get("url"), session)
+                    pdf_url = full_text_url.get("url")
+                    if _debug:
+                        print(f"  [europe_pmc] trying pdf_url={pdf_url}")
+                    result = download_url(pdf_url, session)
                     if result:
                         return result
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"  [europe_pmc] exception: {e}")
     return None
 
 
@@ -163,16 +183,23 @@ def try_pubmed_central(doi: str, session: requests.Session, email: str) -> bytes
             f"?db=pmc&term={doi}[doi]&retmode=json&email={email}&tool=paper_downloader"
         )
         r = session.get(search_url, headers=HEADERS, timeout=15)
+        if _debug:
+            print(f"  [pubmed_central] status={r.status_code}")
         if r.status_code != 200:
             return None
         ids = r.json().get("esearchresult", {}).get("idlist", [])
+        if _debug:
+            print(f"  [pubmed_central] ids={ids}")
         if not ids:
             return None
         time.sleep(0.35)
         pdf_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{ids[0]}/pdf/"
+        if _debug:
+            print(f"  [pubmed_central] trying pdf_url={pdf_url}")
         return download_url(pdf_url, session)
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"  [pubmed_central] exception: {e}")
     return None
 
 
@@ -183,14 +210,19 @@ def try_semantic_scholar(doi: str, session: requests.Session) -> bytes | None:
             f"?fields=openAccessPdf"
         )
         r = session.get(url, headers=HEADERS, timeout=15)
+        if _debug:
+            print(f"  [semantic_scholar] status={r.status_code}")
         if r.status_code != 200:
             return None
         oa = r.json().get("openAccessPdf") or {}
         pdf_url = oa.get("url")
+        if _debug:
+            print(f"  [semantic_scholar] pdf_url={pdf_url}")
         if pdf_url:
             return download_url(pdf_url, session)
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"  [semantic_scholar] exception: {e}")
     return None
 
 
@@ -198,15 +230,18 @@ def try_direct_doi(doi_url: str, session: requests.Session) -> tuple[bytes | Non
     """Return (pdf_bytes_or_None, landing_page_html_or_None)."""
     try:
         r = session.get(doi_url, headers=HEADERS, timeout=20, allow_redirects=True)
+        ct = r.headers.get("Content-Type", "")
+        if _debug:
+            print(f"  [direct_doi] {doi_url} → status={r.status_code} content-type={ct!r} size={len(r.content)}")
         if r.status_code != 200:
             return None, None
-        ct = r.headers.get("Content-Type", "")
         if "pdf" in ct or r.content[:4] == b"%PDF":
             return r.content, None
         if "html" in ct:
             return None, r.text
-    except Exception:
-        pass
+    except Exception as e:
+        if _debug:
+            print(f"  [direct_doi] exception: {e}")
     return None, None
 
 
@@ -279,7 +314,7 @@ def process_paper(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    global EMAIL
+    global EMAIL, _debug
 
     parser = argparse.ArgumentParser(
         description="Download PDFs and supplementary for papers in List_of_papers.txt"
@@ -306,7 +341,14 @@ def main() -> None:
         default="-",
         help="Email address for API requests (default: use EMAIL environment variable)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print verbose debug output for each HTTP request",
+    )
     args = parser.parse_args()
+
+    _debug = args.debug
 
     input_path = Path(args.input)
     output_dir = Path(args.output)
