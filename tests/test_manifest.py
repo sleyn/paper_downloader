@@ -3,7 +3,7 @@
 import re
 
 import pytest
-from fakes import FAKE_PDF, crossref_missing, crossref_record, unpaywall_hit
+from fakes import FAKE_PDF, crossref_missing, crossref_record, miss_everywhere, unpaywall_hit
 
 DOI = "10.1038/s41467-024-12345-6"
 FOLDER = "2024_Leyn_NatureCommunications"
@@ -98,9 +98,7 @@ def test_summary_counts_downloaded_present_and_failed(run, http, capsys):
     paper_available(http, new, family="Smith")
     missing = "10.1000/missing"
     crossref_missing(http, missing)
-    for pattern in (r"https://api\.unpaywall\.org/.*", r"https://www\.ebi\.ac\.uk/.*",
-                    r"https://api\.semanticscholar\.org/.*", r"https://doi\.org/.*"):
-        http.get(re.compile(pattern), status=404)
+    miss_everywhere(http)
     capsys.readouterr()
 
     out = run([DOI, new, missing])

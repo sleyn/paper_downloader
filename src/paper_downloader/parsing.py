@@ -60,8 +60,17 @@ def parse_line(raw: str, number: int) -> Line:
 
 
 def _clean_doi(doi: str) -> str:
-    """Drop the trailing period of a DOI that ends a sentence."""
-    return doi.rstrip(".")
+    """Lower-case the DOI (DOIs are case-insensitive) and drop punctuation that follows it in a sentence.
+
+    A trailing `)` is dropped only when unmatched, so DOIs like `10.1002/(SICI)…(199601)` stay whole.
+    """
+    doi = doi.lower()
+    while doi:
+        if doi[-1] in ".,;" or (doi[-1] == ")" and doi.count(")") > doi.count("(")):
+            doi = doi[:-1]
+        else:
+            break
+    return doi
 
 
 def _parse_citation_metadata(before_doi: str, line: Line) -> None:

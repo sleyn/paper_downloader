@@ -15,7 +15,7 @@ DIRECT_DOI = f"https://doi.org/{DOI}"
 CROSSREF = crossref_url(DOI)
 
 
-def requested_hosts(http) -> list[str]:
+def requested_urls_without_query(http) -> list[str]:
     return [c.request.url.split("?")[0] for c in http.calls]
 
 
@@ -33,7 +33,7 @@ def test_europe_pmc_hit_stops_the_waterfall(run, http):
     out = run([CITATION])
 
     assert (out / FOLDER / f"{FOLDER}.pdf").read_bytes() == FAKE_PDF
-    assert requested_hosts(http) == [CROSSREF, UNPAYWALL, EUROPE_PMC, "https://europepmc.org/paper.pdf"]
+    assert requested_urls_without_query(http) == [CROSSREF, UNPAYWALL, EUROPE_PMC, "https://europepmc.org/paper.pdf"]
 
 
 def test_semantic_scholar_is_tried_right_after_europe_pmc(run, http):
@@ -46,7 +46,7 @@ def test_semantic_scholar_is_tried_right_after_europe_pmc(run, http):
     out = run([CITATION])
 
     assert (out / FOLDER / f"{FOLDER}.pdf").read_bytes() == FAKE_PDF
-    assert requested_hosts(http) == [CROSSREF, UNPAYWALL, EUROPE_PMC, SEMANTIC_SCHOLAR, "https://s2.example.org/paper.pdf"]
+    assert requested_urls_without_query(http) == [CROSSREF, UNPAYWALL, EUROPE_PMC, SEMANTIC_SCHOLAR, "https://s2.example.org/paper.pdf"]
 
 
 def miss_all_apis(http):

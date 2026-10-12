@@ -84,7 +84,8 @@ The paper list is a text file with one paper per line. Each line is one of:
 - **Comment**: a line starting with `#`. Ignored.
 - **Blank line**: ignored.
 
-Both kinds can be mixed in one list. Leading numbering (`12. `) and a period after the DOI are ignored.
+Both kinds can be mixed in one list. Leading numbering (`12. `) and punctuation after the DOI are ignored.
+DOIs are compared case-insensitively, and a paper listed twice is handled once.
 After reading the list, the tool prints how many lines of each kind it found.
 A line with text but no DOI is a **skipped line**: the tool lists each one with its line number and first 80 characters, and adds it to the failure log.
 
@@ -96,7 +97,7 @@ Each row is written as soon as its PDF is saved, so an interrupted run keeps its
 On the next run, a paper whose DOI is in the manifest and whose PDF still exists is skipped without any request, Crossref included.
 So you can keep adding to one paper list and re-run it. To get a paper again, delete its PDF and re-run.
 `--force` downloads every paper again and replaces its manifest row.
-New paper folders never reuse a name already in the manifest.
+New paper folders never reuse a name already in the manifest or already present in the output directory.
 
 The run ends with a summary of papers downloaded, already present and failed.
 

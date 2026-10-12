@@ -7,6 +7,10 @@ DOI = "10.1038/s41467-024-12345-6"
 UNKNOWN = "0000_Unknown_Unknown"
 
 
+def folders(out) -> list[str]:
+    return sorted(p.name for p in out.iterdir() if p.is_dir())
+
+
 @pytest.mark.parametrize(
     "line",
     [
@@ -38,7 +42,7 @@ def test_mixed_numbered_list_with_comments_and_blanks(run, http, capsys):
         "3. 10.1000/ccc",
     ])
 
-    assert sorted(p.name for p in out.iterdir() if p.is_dir()) == [
+    assert folders(out) == [
         UNKNOWN,
         f"{UNKNOWN}_2",
         "2024_Leyn_NatureCommunications",

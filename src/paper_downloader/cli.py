@@ -75,21 +75,20 @@ def read_manifest(path: Path) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
     with path.open(encoding="utf-8", newline="") as f:
-        return {row["doi"]: row for row in csv.DictReader(f, delimiter="\t")}
+        return {row["doi"].lower(): row for row in csv.DictReader(f, delimiter="\t")}
 
 
 def record_download(path: Path, manifest: dict[str, dict[str, str]], row: dict[str, str]) -> None:
     """Add `row` to the manifest on disk right away. A DOI already listed has its row replaced."""
-    replacing = row["doi"] in manifest
+    rewrite = row["doi"] in manifest or not path.exists()
     manifest[row["doi"]] = row
-    if replacing or not path.exists():
-        with path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, MANIFEST_COLUMNS, delimiter="\t", lineterminator="\n")
+    with path.open("w" if rewrite else "a", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, MANIFEST_COLUMNS, delimiter="\t", lineterminator="\n")
+        if rewrite:
             writer.writeheader()
             writer.writerows(manifest.values())
-    else:
-        with path.open("a", encoding="utf-8", newline="") as f:
-            csv.DictWriter(f, MANIFEST_COLUMNS, delimiter="\t", lineterminator="\n").writerow(row)
+        else:
+            writer.writerow(row)
 
 
 # ---------------------------------------------------------------------------
@@ -203,8 +202,10 @@ def main(argv: list[str] | None = None) -> None:
     print(f"\nOutput directory: {output_dir}\n")
 
     manifest = read_manifest(manifest_path)
-    # Seeded from earlier runs so a new paper never takes an existing paper folder's name.
+    # Seeded from earlier runs, and from folders already on disk, so a new paper never takes an existing name.
     used_names = {row["folder"] for row in manifest.values()}
+    used_names |= {p.name for p in output_dir.iterdir() if p.is_dir()}
+    handled_dois: set[str] = set()
     # (line, reason) for every line that goes in the failure log.
     failures: list[tuple[Line, str]] = [(line, f"no DOI found (line {line.number})") for line in skipped]
     downloaded = already_present = 0
@@ -213,6 +214,10 @@ def main(argv: list[str] | None = None) -> None:
 
     for i, paper in enumerate(papers, start=1):
         print(f"[{i}/{len(papers)}] DOI: {paper.doi_url}")
+        if paper.doi in handled_dois:
+            print(f"  Listed again on line {paper.number}; already handled in this run.\n")
+            continue
+        handled_dois.add(paper.doi)
         listed = manifest.get(paper.doi)
         if listed:
             name = listed["folder"]

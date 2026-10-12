@@ -1,23 +1,10 @@
 """Skipped lines are reported, and the failure log is a paper list that can be re-run."""
 
-import re
-
-from fakes import FAKE_PDF, crossref_missing, unpaywall_hit
+from fakes import crossref_missing, miss_everywhere, unpaywall_hit
 
 FOUND = "10.1000/found"
 MISSING = "10.1000/missing"
 NO_DOI = "3. Smith J. A paper whose DOI I forgot to paste. Cell Reports. 2019. This line is quite long, more than eighty characters."
-
-
-def miss_everywhere(http, doi: str) -> None:
-    """Every strategy misses `doi`."""
-    for pattern in (
-        r"https://api\.unpaywall\.org/.*",
-        r"https://www\.ebi\.ac\.uk/.*",
-        r"https://api\.semanticscholar\.org/.*",
-        r"https://doi\.org/.*",
-    ):
-        http.get(re.compile(pattern), status=404)
 
 
 def test_skipped_line_reported_with_line_number_and_first_80_characters(run, http, capsys):
@@ -35,7 +22,7 @@ def test_failure_log_lists_reason_then_original_line(run, http):
     crossref_missing(http, FOUND)
     unpaywall_hit(http, FOUND)
     crossref_missing(http, MISSING)
-    miss_everywhere(http, MISSING)
+    miss_everywhere(http)
 
     out = run([f"1. {FOUND}", f"2. doi:{MISSING}", NO_DOI])
 
@@ -51,7 +38,7 @@ def test_failure_log_as_input_retries_exactly_the_failed_papers(run, http, tmp_p
     crossref_missing(http, FOUND)
     unpaywall_hit(http, FOUND)
     crossref_missing(http, MISSING)
-    miss_everywhere(http, MISSING)
+    miss_everywhere(http)
     out = run([FOUND, MISSING])
     first_run_calls = len(http.calls)
 

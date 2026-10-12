@@ -1,5 +1,6 @@
 """Canned API replies for tests."""
 
+import re
 from urllib.parse import quote
 
 # Large enough to pass the downloader's "more than 1 KB" check.
@@ -36,3 +37,14 @@ def crossref_record(http, doi: str, *, year=None, family=None, name=None, journa
 def crossref_missing(http, doi: str, status: int = 404) -> None:
     """Crossref has no record of `doi` (404) or is down (5xx)."""
     http.get(crossref_url(doi), status=status)
+
+
+def miss_everywhere(http) -> None:
+    """Every strategy misses every DOI."""
+    for pattern in (
+        r"https://api\.unpaywall\.org/.*",
+        r"https://www\.ebi\.ac\.uk/.*",
+        r"https://api\.semanticscholar\.org/.*",
+        r"https://doi\.org/.*",
+    ):
+        http.get(re.compile(pattern), status=404)
