@@ -10,7 +10,7 @@ import requests
 from dotenv import dotenv_values
 
 from paper_downloader import strategies
-from paper_downloader.metadata import make_folder_name, unique_name
+from paper_downloader.metadata import fetch_crossref, make_folder_name, resolve_metadata, unique_name
 from paper_downloader.parsing import (
     BLANK,
     CITATION_LINE,
@@ -166,14 +166,13 @@ def main(argv: list[str] | None = None) -> None:
     session = requests.Session()
 
     for i, paper in enumerate(papers, start=1):
-        base = make_folder_name(
-            paper.year or "0000", paper.first_author or "Unknown", paper.journal or "Unknown"
-        )
+        print(f"[{i}/{len(papers)}] DOI: {paper.doi_url}")
+        crossref = fetch_crossref(paper.doi, session, strategies.EMAIL)
+        time.sleep(args.delay)
+        base = make_folder_name(resolve_metadata(crossref, paper))
         name = unique_name(base, seen_names)
         folder = output_dir / name
-
-        print(f"[{i}/{len(papers)}] {name}")
-        print(f"  DOI: {paper.doi_url}")
+        print(f"  Paper folder: {name}")
 
         error = process_paper(paper, folder, name, session, args.delay)
         if error:

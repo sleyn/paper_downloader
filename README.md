@@ -14,7 +14,10 @@ The tool reads each line of the paper list, extracts the DOI, and tries four str
 A download counts only if it returns status 200, more than 1 KB, and a PDF content type or `%PDF` header, so an error page is never saved as a paper.
 PubMed Central is not tried: its PDF links now serve a reCAPTCHA page ([ADR 0001](docs/adr/0001-drop-pubmed-central-strategy.md)).
 
-Each PDF is saved as `<output>/<year>_<FirstAuthor>_<JournalSlug>/<same-name>.pdf`.
+Each PDF is saved in a paper folder named `<year>_<FirstAuthor>_<Journal>`, as `<output>/<folder>/<folder>.pdf`.
+The paper metadata comes from Crossref (one request per paper): the issue year, the first author's family name (or the consortium name), and the full journal title with only letters and digits kept, e.g. `2024_Leyn_NatureCommunications`.
+If Crossref lacks a field, the tool takes it from the citation line, then falls back to `0000` or `Unknown`. A citation line and a DOI line for the same paper get the same folder.
+Two papers that would share a name get `_2`, `_3`, and so on.
 Papers with no PDF found are logged to `<output>/failed_downloads.txt`.
 
 ## Install

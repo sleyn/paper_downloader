@@ -3,24 +3,22 @@
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from fakes import FAKE_PDF
+from fakes import crossref_missing
+from fakes import unpaywall_hit as fake_unpaywall_hit
 
-DOI_CITATION = "Leyn SA. Things. Nature Communications. 2024. https://doi.org/10.1038/s41467-024-12345-6"
+DOI = "10.1038/s41467-024-12345-6"
+DOI_CITATION = f"Leyn SA. Things. Nature Communications. 2024. https://doi.org/{DOI}"
 
 
 @pytest.fixture
 def unpaywall_hit(http):
-    http.get(
-        "https://api.unpaywall.org/v2/10.1038/s41467-024-12345-6",
-        json={"best_oa_location": {"url_for_pdf": "https://oa.example.org/paper.pdf"}},
-    )
-    http.get("https://oa.example.org/paper.pdf", body=FAKE_PDF, content_type="application/pdf")
+    crossref_missing(http, DOI)
+    fake_unpaywall_hit(http, DOI)
     return http
 
 
 def email_sent_to_unpaywall(http) -> str:
-    url = http.calls[0].request.url
-    assert url.startswith("https://api.unpaywall.org/")
+    [url] = [c.request.url for c in http.calls if c.request.url.startswith("https://api.unpaywall.org/")]
     return parse_qs(urlparse(url).query)["email"][0]
 
 

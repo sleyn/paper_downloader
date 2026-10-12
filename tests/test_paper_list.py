@@ -1,7 +1,7 @@
 """Reading a paper list: citation lines, DOI lines, comments, blanks and numbering."""
 
 import pytest
-from fakes import FAKE_PDF, unpaywall_hit
+from fakes import FAKE_PDF, crossref_missing, unpaywall_hit
 
 DOI = "10.1038/s41467-024-12345-6"
 UNKNOWN = "0000_Unknown_Unknown"
@@ -17,6 +17,7 @@ UNKNOWN = "0000_Unknown_Unknown"
     ],
 )
 def test_each_doi_line_form_downloads_its_paper(run, http, line):
+    crossref_missing(http, DOI)
     unpaywall_hit(http, DOI)
 
     out = run([line])
@@ -26,6 +27,7 @@ def test_each_doi_line_form_downloads_its_paper(run, http, line):
 
 def test_mixed_numbered_list_with_comments_and_blanks(run, http, capsys):
     for doi in ("10.1000/aaa", "10.1000/bbb", "10.1000/ccc"):
+        crossref_missing(http, doi)
         unpaywall_hit(http, doi)
 
     out = run([
@@ -49,6 +51,7 @@ def test_mixed_numbered_list_with_comments_and_blanks(run, http, capsys):
 
 
 def test_doi_url_is_always_https_doi_org(run, http, capsys):
+    crossref_missing(http, DOI)
     unpaywall_hit(http, DOI)
 
     run([f"http://dx.doi.org/{DOI}"])

@@ -14,7 +14,7 @@ uv run pytest                # offline test suite
 Default `--input` and `--output` are relative to the current directory.
 
 ## Layout
-`src/paper_downloader/`: `parsing.py` (line parsing), `metadata.py` (paper folder naming), `strategies.py` (one function per strategy plus `download_url`), `cli.py` (arguments, email resolution, the per-paper waterfall).
+`src/paper_downloader/`: `parsing.py` (classifies paper list lines), `metadata.py` (Crossref paper metadata and paper folder naming), `strategies.py` (one function per strategy plus `download_url`), `cli.py` (arguments, email resolution, the per-paper waterfall).
 
 ## Key implementation details
 
@@ -22,7 +22,7 @@ Default `--input` and `--output` are relative to the current directory.
 - `cli.WATERFALL` lists the strategies in order: Unpaywall → Europe PMC → Semantic Scholar → direct DOI. Each takes `(doi, session)` and returns PDF bytes, or `None` to pass to the next one. PubMed Central was dropped because it serves a reCAPTCHA page ([ADR 0001](docs/adr/0001-drop-pubmed-central-strategy.md)); keep it out unless that ADR is superseded.
 - Every PDF goes through `strategies.download_url`, which accepts only status 200, more than 1 KB, and a PDF content type or `%PDF` header.
 - DOIs in URL paths go through `quote_doi` (percent-encoded, `/` kept); query values go through `params=`.
-- Paper folders are named `{year}_{FirstAuthor}_{JournalNoSpecialChars}`. Duplicate names get `_2`, `_3`, … from `unique_name()`.
+- Paper folders are named `{year}_{FirstAuthor}_{Journal}` from `metadata.fetch_crossref`, falling back field by field to the citation line, then `0000` / `Unknown` (`resolve_metadata`). Duplicate names get `_2`, `_3`, … from `unique_name()`.
 - `failed_downloads.txt` is written only when at least one paper fails. It records the DOI URL, reason, and original citation line.
 
 ## When modifying the code
