@@ -38,7 +38,7 @@ uv tool install .
 
 ## Configuration
 
-Unpaywall requires an email address, and it goes in every request's User-Agent. The tool takes the first one it finds from:
+Unpaywall requires an email address. It is also sent to Crossref as `mailto` (Crossref's polite pool) and goes in every request's User-Agent. The tool takes the first one it finds from:
 
 1. `--email you@example.com` on the command line
 2. the `EMAIL` environment variable

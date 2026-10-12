@@ -197,7 +197,7 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"Read {input_path}: {count_kinds(lines)}")
     if skipped:
-        print(f"\nWarning: {len(skipped)} line(s) with no DOI found were skipped:")
+        print(f"\nWarning: {len(skipped)} skipped line(s), no DOI found:")
         for line in skipped:
             print(f"  line {line.number}: {line.raw.strip()[:80]}")
     print(f"\nOutput directory: {output_dir}\n")
