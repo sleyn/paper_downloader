@@ -9,7 +9,7 @@ The tool reads each line of the paper list, extracts the DOI, and tries four str
 1. **Unpaywall** asks the Unpaywall API for the best open-access PDF URL.
 2. **Europe PMC** searches EBI's Europe PMC REST API for a full-text PDF.
 3. **Semantic Scholar** checks the Semantic Scholar graph API for an open-access PDF link.
-4. **Direct DOI** follows the DOI URL and checks whether it returns a PDF.
+4. **Direct DOI** follows the DOI URL and checks whether it returns a PDF. If the DOI lands on an HTML page instead, it tries the page's `citation_pdf_url` and then up to 5 links containing "pdf" ([ADR 0002](docs/adr/0002-direct-doi-follows-landing-page-pdf-links.md)).
 
 A download counts only if it returns status 200, more than 1 KB, and a PDF content type or `%PDF` header, so an error page is never saved as a paper.
 PubMed Central is not tried: its PDF links now serve a reCAPTCHA page ([ADR 0001](docs/adr/0001-drop-pubmed-central-strategy.md)).

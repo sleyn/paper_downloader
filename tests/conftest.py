@@ -20,10 +20,15 @@ def http():
 
     Strategies swallow exceptions, so the ConnectionError that `responses` raises for an
     unmatched request would be hidden. We check the recorded calls after the test instead.
+    Exceptions a test registers on purpose (for example a faked timeout) are not counted.
     """
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         yield rsps
-        unmatched = [c.request.url for c in rsps.calls if isinstance(c.response, Exception)]
+        unmatched = [
+            c.request.url
+            for c in rsps.calls
+            if isinstance(c.response, Exception) and "Connection refused by Responses" in str(c.response)
+        ]
         assert not unmatched, f"Unregistered URLs requested: {unmatched}"
 
 

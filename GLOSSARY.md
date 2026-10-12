@@ -42,6 +42,10 @@ _Avoid_: Paper directory, base name
 One open-access source tried for a paper's PDF. Strategies are tried in a fixed order until one returns a PDF.
 _Avoid_: Source, method, fallback
 
+**Landing page**:
+The HTML page a DOI resolves to when it doesn't resolve to a PDF.
+_Avoid_: Article page, abstract page, DOI page
+
 **Manifest**:
 The record of every paper downloaded so far: its DOI, paper folder, the strategy that succeeded, and the date.
 _Avoid_: Index, cache, download history
