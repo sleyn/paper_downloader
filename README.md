@@ -65,13 +65,24 @@ Both default paths are relative to the current directory.
 
 ## Input format
 
-Each line is a bibliographic citation ending with a `https://doi.org/…` URL, for example:
+The paper list is a text file with one paper per line. Each line is one of:
 
-```
-1. Leyn SA, Kazanov MD, Suvorova IA, ... Nature Communications. 2024. https://doi.org/10.1038/s41467-024-12345-6
-```
+- **Citation line**: a bibliographic citation with a DOI URL in it.
+  ```
+  Leyn SA, Kazanov MD, Suvorova IA, ... Nature Communications. 2024. https://doi.org/10.1038/s41467-024-12345-6
+  ```
+- **DOI line**: just a DOI, in any of these forms:
+  ```
+  https://doi.org/10.1038/s41467-024-12345-6
+  http://dx.doi.org/10.1038/s41467-024-12345-6
+  doi:10.1038/s41467-024-12345-6
+  10.1038/s41467-024-12345-6
+  ```
+- **Comment**: a line starting with `#`. Ignored.
+- **Blank line**: ignored.
 
-Lines without a DOI URL are skipped without a warning.
+Both kinds can be mixed in one list. Leading numbering (`12. `) and a period after the DOI are ignored.
+After reading the list, the tool prints how many lines of each kind it found.
 
 ## Output structure
 

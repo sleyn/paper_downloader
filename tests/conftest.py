@@ -7,10 +7,6 @@ import responses
 
 from paper_downloader import cli
 
-# Large enough to pass the downloader's "more than 1 KB" check.
-FAKE_PDF = b"%PDF-1.4\n" + b"0" * 2048
-
-
 @pytest.fixture(autouse=True)
 def isolated_env(tmp_path, monkeypatch):
     """Run every test in an empty working directory with no EMAIL from the shell."""

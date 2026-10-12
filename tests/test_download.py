@@ -1,6 +1,6 @@
 """End-to-end downloads through the CLI."""
 
-from conftest import FAKE_PDF
+from fakes import FAKE_PDF
 
 from paper_downloader import cli
 

@@ -11,7 +11,15 @@ from dotenv import dotenv_values
 
 from paper_downloader import strategies
 from paper_downloader.metadata import make_folder_name, unique_name
-from paper_downloader.parsing import parse_line
+from paper_downloader.parsing import (
+    BLANK,
+    CITATION_LINE,
+    COMMENT,
+    DOI_LINE,
+    SKIPPED_LINE,
+    Line,
+    parse_line,
+)
 from paper_downloader.strategies import (
     try_direct_doi,
     try_europe_pmc,
@@ -33,7 +41,7 @@ WATERFALL = [
 # ---------------------------------------------------------------------------
 
 def process_paper(
-    paper: dict,
+    paper: Line,
     folder: Path,
     base_name: str,
     session: requests.Session,
@@ -48,7 +56,7 @@ def process_paper(
 
     for i, (label, strategy) in enumerate(WATERFALL):
         print(f"{'miss. ' if i else '  '}Trying {label} ...", end=" ", flush=True)
-        pdf_bytes = strategy(paper["doi"], session)
+        pdf_bytes = strategy(paper.doi, session)
         time.sleep(delay)
         if pdf_bytes:
             break
@@ -66,6 +74,16 @@ def process_paper(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
+def count_kinds(lines: list[Line]) -> str:
+    """Summarise how many lines of each kind the paper list holds, e.g. "2 DOI lines, 1 comment"."""
+    parts = []
+    for kind in (CITATION_LINE, DOI_LINE, SKIPPED_LINE, COMMENT, BLANK):
+        n = sum(1 for line in lines if line.kind == kind)
+        noun = kind if kind != BLANK else "blank line"
+        parts.append(f"{n} {noun}{'' if n == 1 else 's'}")
+    return ", ".join(parts)
+
 
 def resolve_email(flag: str | None) -> str:
     """Return the email from --email, else the EMAIL environment variable, else .env in the current directory."""
@@ -133,14 +151,13 @@ def main(argv: list[str] | None = None) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    lines = [l for l in input_path.read_text(encoding="utf-8").splitlines() if l.strip()]
-    papers = []
-    for line in lines:
-        parsed = parse_line(line)
-        if parsed:
-            papers.append(parsed)
+    lines = [
+        parse_line(raw, number)
+        for number, raw in enumerate(input_path.read_text(encoding="utf-8").splitlines(), start=1)
+    ]
+    papers = [line for line in lines if line.kind in (CITATION_LINE, DOI_LINE)]
 
-    print(f"Parsed {len(papers)} papers from {input_path}")
+    print(f"Read {input_path}: {count_kinds(lines)}")
     print(f"Output directory: {output_dir}\n")
 
     seen_names: dict[str, int] = {}
@@ -149,16 +166,18 @@ def main(argv: list[str] | None = None) -> None:
     session = requests.Session()
 
     for i, paper in enumerate(papers, start=1):
-        base = make_folder_name(paper["year"], paper["first_author"], paper["journal"])
+        base = make_folder_name(
+            paper.year or "0000", paper.first_author or "Unknown", paper.journal or "Unknown"
+        )
         name = unique_name(base, seen_names)
         folder = output_dir / name
 
         print(f"[{i}/{len(papers)}] {name}")
-        print(f"  DOI: {paper['doi_url']}")
+        print(f"  DOI: {paper.doi_url}")
 
         error = process_paper(paper, folder, name, session, args.delay)
         if error:
-            failures.append(f"{paper['doi_url']}  # {error}  | {paper['raw']}")
+            failures.append(f"{paper.doi_url}  # {error}  | {paper.raw.strip()}")
         print()
 
     if failures:

@@ -2,7 +2,7 @@
 
 import re
 
-from conftest import FAKE_PDF
+from fakes import FAKE_PDF
 
 DOI = "10.1038/s41467-024-12345-6"
 CITATION = f"Leyn SA. Things. Nature Communications. 2024. https://doi.org/{DOI}"
