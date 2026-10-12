@@ -4,13 +4,15 @@ Downloads open-access PDFs for the scientific papers in a paper list, using only
 
 ## How it works
 
-The tool reads each line of the paper list, extracts the DOI, and tries five strategies in order until one returns a PDF:
+The tool reads each line of the paper list, extracts the DOI, and tries four strategies in order until one returns a PDF:
 
 1. **Unpaywall** asks the Unpaywall API for the best open-access PDF URL.
 2. **Europe PMC** searches EBI's Europe PMC REST API for a full-text PDF.
-3. **PubMed Central** resolves the DOI to a PMC ID with NCBI eUtils, then fetches the PDF.
-4. **Semantic Scholar** checks the Semantic Scholar graph API for an open-access PDF link.
-5. **Direct DOI** follows the DOI URL and checks whether it returns a PDF.
+3. **Semantic Scholar** checks the Semantic Scholar graph API for an open-access PDF link.
+4. **Direct DOI** follows the DOI URL and checks whether it returns a PDF.
+
+A download counts only if it returns status 200, more than 1 KB, and a PDF content type or `%PDF` header, so an error page is never saved as a paper.
+PubMed Central is not tried: its PDF links now serve a reCAPTCHA page ([ADR 0001](docs/adr/0001-drop-pubmed-central-strategy.md)).
 
 Each PDF is saved as `<output>/<year>_<FirstAuthor>_<JournalSlug>/<same-name>.pdf`.
 Papers with no PDF found are logged to `<output>/failed_downloads.txt`.
@@ -34,7 +36,7 @@ uv tool install .
 
 ## Configuration
 
-Unpaywall and NCBI require an email address. The tool takes the first one it finds from:
+Unpaywall requires an email address, and it goes in every request's User-Agent. The tool takes the first one it finds from:
 
 1. `--email you@example.com` on the command line
 2. the `EMAIL` environment variable

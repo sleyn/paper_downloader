@@ -15,10 +15,17 @@ from paper_downloader.parsing import parse_line
 from paper_downloader.strategies import (
     try_direct_doi,
     try_europe_pmc,
-    try_pubmed_central,
     try_semantic_scholar,
     try_unpaywall,
 )
+
+# Strategies in the order they are tried. See docs/adr/0001-drop-pubmed-central-strategy.md.
+WATERFALL = [
+    ("Unpaywall", try_unpaywall),
+    ("Europe PMC", try_europe_pmc),
+    ("Semantic Scholar", try_semantic_scholar),
+    ("direct DOI", try_direct_doi),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -33,46 +40,26 @@ def process_paper(
     delay: float,
 ) -> str | None:
     """
-    Try all strategies to download the PDF files.
+    Try each strategy in turn until one returns the PDF.
     Returns None on success, or an error string on failure.
     """
-    doi = paper["doi"]
-    doi_url = paper["doi_url"]
     pdf_path = folder / f"{base_name}.pdf"
+    pdf_bytes = None
 
-    print(f"  Trying Unpaywall ...", end=" ", flush=True)
-    pdf_bytes = try_unpaywall(doi, session)
-    time.sleep(delay)
+    for i, (label, strategy) in enumerate(WATERFALL):
+        print(f"{'miss. ' if i else '  '}Trying {label} ...", end=" ", flush=True)
+        pdf_bytes = strategy(paper["doi"], session)
+        time.sleep(delay)
+        if pdf_bytes:
+            break
 
     if not pdf_bytes:
-        print("miss. Trying Europe PMC ...", end=" ", flush=True)
-        pdf_bytes = try_europe_pmc(doi, session)
-        time.sleep(delay)
-
-    if not pdf_bytes:
-        print("miss. Trying PubMed Central ...", end=" ", flush=True)
-        pdf_bytes = try_pubmed_central(doi, session, strategies.EMAIL)
-        time.sleep(delay)
-
-    if not pdf_bytes:
-        print("miss. Trying Semantic Scholar ...", end=" ", flush=True)
-        pdf_bytes = try_semantic_scholar(doi, session)
-        time.sleep(delay)
-
-    if not pdf_bytes:
-        print("miss. Trying direct DOI ...", end=" ", flush=True)
-        pdf_bytes, _ = try_direct_doi(doi_url, session)
-        time.sleep(delay)
-
-    if pdf_bytes:
-        folder.mkdir(parents=True, exist_ok=True)
-        pdf_path.write_bytes(pdf_bytes)
-        print(f"saved ({len(pdf_bytes) // 1024} KB)")
-    else:
         print("not found.")
-
-    if not pdf_bytes:
         return "PDF not found via any strategy"
+
+    folder.mkdir(parents=True, exist_ok=True)
+    pdf_path.write_bytes(pdf_bytes)
+    print(f"saved ({len(pdf_bytes) // 1024} KB)")
     return None
 
 

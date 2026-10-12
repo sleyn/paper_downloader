@@ -1,7 +1,7 @@
 # paper_downloader: Claude instructions
 
 ## Purpose
-A uv package with one console script, `paper-downloader`, that fetches open-access PDFs for the papers in a paper list using public APIs (Unpaywall, Europe PMC, PubMed Central, Semantic Scholar, direct DOI). Domain terms are defined in `GLOSSARY.md`; decisions live in `docs/adr/`.
+A uv package with one console script, `paper-downloader`, that fetches open-access PDFs for the papers in a paper list using public APIs (Unpaywall, Europe PMC, Semantic Scholar, direct DOI). Domain terms are defined in `GLOSSARY.md`; decisions live in `docs/adr/`.
 
 ## Workflow
 
@@ -19,8 +19,9 @@ Default `--input` and `--output` are relative to the current directory.
 ## Key implementation details
 
 - Email resolution happens in `cli.main()`: `--email`, then the `EMAIL` environment variable, then `EMAIL` in `.env` in the current directory. No email exits with an error. The result goes into `strategies.EMAIL`, and `strategies.HEADERS["User-Agent"]` is set after it.
-- Strategies run in order: Unpaywall → Europe PMC → PubMed Central → Semantic Scholar → direct DOI. A strategy returning `None` means no PDF was found; the next one is tried.
-- `try_pubmed_central` sleeps 0.35 s between the eUtils search and the PDF fetch to stay within NCBI's 3 requests/s limit without an API key.
+- `cli.WATERFALL` lists the strategies in order: Unpaywall → Europe PMC → Semantic Scholar → direct DOI. Each takes `(doi, session)` and returns PDF bytes, or `None` to pass to the next one. PubMed Central was dropped because it serves a reCAPTCHA page ([ADR 0001](docs/adr/0001-drop-pubmed-central-strategy.md)); keep it out unless that ADR is superseded.
+- Every PDF goes through `strategies.download_url`, which accepts only status 200, more than 1 KB, and a PDF content type or `%PDF` header.
+- DOIs in URL paths go through `quote_doi` (percent-encoded, `/` kept); query values go through `params=`.
 - Paper folders are named `{year}_{FirstAuthor}_{JournalNoSpecialChars}`. Duplicate names get `_2`, `_3`, … from `unique_name()`.
 - `failed_downloads.txt` is written only when at least one paper fails. It records the DOI URL, reason, and original citation line.
 

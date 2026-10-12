@@ -1,6 +1,6 @@
 """Download strategies: one function per open-access source, plus the shared download helper."""
 
-import time
+from urllib.parse import quote
 
 import requests
 
@@ -11,6 +11,11 @@ _debug = False
 
 # User-Agent is filled in by cli.main() once EMAIL is final.
 HEADERS: dict[str, str] = {}
+
+
+def quote_doi(doi: str) -> str:
+    """Percent-encode a DOI for use in a URL path, keeping its `/` separators."""
+    return quote(doi, safe="/")
 
 
 def download_url(url: str, session: requests.Session, timeout: int = 30) -> bytes | None:
@@ -30,8 +35,8 @@ def download_url(url: str, session: requests.Session, timeout: int = 30) -> byte
 
 def try_unpaywall(doi: str, session: requests.Session) -> bytes | None:
     try:
-        url = f"https://api.unpaywall.org/v2/{doi}?email={EMAIL}"
-        r = session.get(url, headers=HEADERS, timeout=15)
+        url = f"https://api.unpaywall.org/v2/{quote_doi(doi)}"
+        r = session.get(url, params={"email": EMAIL}, headers=HEADERS, timeout=15)
         if _debug:
             print(f"  [unpaywall] status={r.status_code}")
         if r.status_code != 200:
@@ -61,11 +66,9 @@ def try_unpaywall(doi: str, session: requests.Session) -> bytes | None:
 
 def try_europe_pmc(doi: str, session: requests.Session) -> bytes | None:
     try:
-        search_url = (
-            f"https://www.ebi.ac.uk/europepmc/webservices/rest/search"
-            f"?query=DOI:{doi}&format=json&resultType=core"
-        )
-        r = session.get(search_url, headers=HEADERS, timeout=15)
+        search_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+        params = {"query": f"DOI:{doi}", "format": "json", "resultType": "core"}
+        r = session.get(search_url, params=params, headers=HEADERS, timeout=15)
         if _debug:
             print(f"  [europe_pmc] status={r.status_code}")
         if r.status_code != 200:
@@ -89,40 +92,10 @@ def try_europe_pmc(doi: str, session: requests.Session) -> bytes | None:
     return None
 
 
-def try_pubmed_central(doi: str, session: requests.Session, email: str) -> bytes | None:
-    try:
-        search_url = (
-            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
-            f"?db=pmc&term={doi}[doi]&retmode=json&email={email}&tool=paper_downloader"
-        )
-        r = session.get(search_url, headers=HEADERS, timeout=15)
-        if _debug:
-            print(f"  [pubmed_central] status={r.status_code}")
-        if r.status_code != 200:
-            return None
-        ids = r.json().get("esearchresult", {}).get("idlist", [])
-        if _debug:
-            print(f"  [pubmed_central] ids={ids}")
-        if not ids:
-            return None
-        time.sleep(0.35)
-        pdf_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{ids[0]}/pdf/"
-        if _debug:
-            print(f"  [pubmed_central] trying pdf_url={pdf_url}")
-        return download_url(pdf_url, session)
-    except Exception as e:
-        if _debug:
-            print(f"  [pubmed_central] exception: {e}")
-    return None
-
-
 def try_semantic_scholar(doi: str, session: requests.Session) -> bytes | None:
     try:
-        url = (
-            f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}"
-            f"?fields=openAccessPdf"
-        )
-        r = session.get(url, headers=HEADERS, timeout=15)
+        url = f"https://api.semanticscholar.org/graph/v1/paper/DOI:{quote_doi(doi)}"
+        r = session.get(url, params={"fields": "openAccessPdf"}, headers=HEADERS, timeout=15)
         if _debug:
             print(f"  [semantic_scholar] status={r.status_code}")
         if r.status_code != 200:
@@ -139,30 +112,8 @@ def try_semantic_scholar(doi: str, session: requests.Session) -> bytes | None:
     return None
 
 
-def try_direct_doi(doi_url: str, session: requests.Session) -> tuple[bytes | None, str | None]:
-    """Return (pdf_bytes_or_None, landing_page_html_or_None)."""
-    try:
-        r = session.get(doi_url, headers=HEADERS, timeout=20, allow_redirects=True)
-        ct = r.headers.get("Content-Type", "")
-        if _debug:
-            print(f"  [direct_doi] {doi_url} → status={r.status_code} content-type={ct!r} size={len(r.content)}")
-        if r.status_code != 200:
-            return None, None
-        if "pdf" in ct or r.content[:4] == b"%PDF":
-            return r.content, None
-        if "html" in ct:
-            return None, r.text
-    except Exception as e:
-        if _debug:
-            print(f"  [direct_doi] exception: {e}")
-    return None, None
-
-
-def fetch_landing_html(doi_url: str, session: requests.Session) -> str | None:
-    try:
-        r = session.get(doi_url, headers=HEADERS, timeout=20, allow_redirects=True)
-        if r.status_code == 200 and "html" in r.headers.get("Content-Type", ""):
-            return r.text
-    except Exception:
-        pass
-    return None
+def try_direct_doi(doi: str, session: requests.Session) -> bytes | None:
+    doi_url = f"https://doi.org/{quote_doi(doi)}"
+    if _debug:
+        print(f"  [direct_doi] trying {doi_url}")
+    return download_url(doi_url, session)
