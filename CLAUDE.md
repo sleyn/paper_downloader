@@ -14,7 +14,7 @@ The default `--input` and `--output` paths are relative to the repository root.
 
 ## Key implementation details
 
-- `EMAIL` is read from `paper_scripts/.env` at module load time; the `.env` must exist before any imports resolve, or the script exits early.
+- `EMAIL` is read from `.env` next to the script at module load time; `--email` overrides it in `main()`. If neither provides an email, the script exits. `HEADERS["User-Agent"]` is set in `main()` after `EMAIL` is final.
 - Download strategies are tried in order: Unpaywall → Europe PMC → PubMed Central → Semantic Scholar → direct DOI. A strategy returning `None` means no PDF was found; the next one is tried.
 - `try_pubmed_central` adds an extra `time.sleep(0.35)` between the eUtils search and the PDF fetch to stay within NCBI rate limits (3 req/s without an API key).
 - Folder names are sanitised: `{year}_{FirstAuthor}_{JournalNoSpecialChars}`. Duplicate base names get a `_2`, `_3`, … suffix via `unique_name()`.

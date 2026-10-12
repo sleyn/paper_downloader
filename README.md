@@ -20,7 +20,7 @@ Papers that could not be retrieved are logged to `<output>/failed_downloads.txt`
 Python 3.10+ and the following packages:
 
 ```
-pip install requests beautifulsoup4 python-dotenv
+pip install requests python-dotenv
 ```
 
 ## Configuration

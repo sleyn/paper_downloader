@@ -5,37 +5,25 @@ import argparse
 import re
 import sys
 import time
-import os
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
 
 try:
     from dotenv import dotenv_values
 except ImportError:
-    sys.exit("Missing dependency: pip install dotenv")
+    sys.exit("Missing dependency: pip install python-dotenv")
 
 try:
     import requests
 except ImportError:
     sys.exit("Missing dependency: pip install requests")
 
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    sys.exit("Missing dependency: pip install beautifulsoup4")
-
-config = dotenv_values(Path(__file__).resolve().parent /".env")
-EMAIL = config.get("EMAIL", "").strip()
-print(f"Using email: '{EMAIL}' (set EMAIL in .env or use --email to override)")
+config = dotenv_values(Path(__file__).resolve().parent / ".env")
+EMAIL = (config.get("EMAIL") or "").strip()
 
 _debug = False
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (compatible; PaperDownloader/1.0; "
-        f"mailto:{EMAIL})"
-    )
-}
+# User-Agent is filled in by main() once EMAIL is final (it may be overridden by --email).
+HEADERS: dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -338,8 +326,8 @@ def main() -> None:
     parser.add_argument(
         "--email",
         type=str,
-        default="-",
-        help="Email address for API requests (default: use EMAIL environment variable)",
+        default=None,
+        help="Email address for API requests (default: EMAIL from .env next to the script)",
     )
     parser.add_argument(
         "--debug",
@@ -354,11 +342,12 @@ def main() -> None:
     output_dir = Path(args.output)
     failed_log = output_dir / "failed_downloads.txt"
 
-    if EMAIL is None:
-        if args.email != "-":
-            EMAIL = args.email
-        else:
-            sys.exit("Email address is required. Set it in the .env file or use --email to provide it.")
+    if args.email is not None:
+        EMAIL = args.email.strip()
+    if not EMAIL:
+        sys.exit("Email address is required. Set it in the .env file or use --email to provide it.")
+    HEADERS["User-Agent"] = f"Mozilla/5.0 (compatible; PaperDownloader/1.0; mailto:{EMAIL})"
+    print(f"Using email: '{EMAIL}'")
 
     if not input_path.exists():
         sys.exit(f"Input file not found: {input_path}")
