@@ -1,28 +1,34 @@
-# paper_scripts — Claude instructions
+# paper_downloader: Claude instructions
 
 ## Purpose
-This directory contains `download_papers.py`, a standalone script that fetches open-access PDFs for papers in `reference/List_of_papers.txt` using five public APIs (Unpaywall, Europe PMC, PubMed Central, Semantic Scholar, direct DOI).
+A uv package with one console script, `paper-downloader`, that fetches open-access PDFs for the papers in a paper list using public APIs (Unpaywall, Europe PMC, PubMed Central, Semantic Scholar, direct DOI). Domain terms are defined in `GLOSSARY.md`; decisions live in `docs/adr/`.
 
-## Running the script
-Always run from the **repository root** (the `AI_Job_Helper` directory), not from inside `paper_scripts/`:
+## Workflow
 
 ```bash
-python reference/paper_scripts/download_papers.py
+uv sync                      # install runtime + dev dependencies
+uv run paper-downloader      # run against ./List_of_papers.txt, writing to ./papers
+uv run pytest                # offline test suite
 ```
 
-The default `--input` and `--output` paths are relative to the repository root.
+Default `--input` and `--output` are relative to the current directory.
+
+## Layout
+`src/paper_downloader/`: `parsing.py` (line parsing), `metadata.py` (paper folder naming), `strategies.py` (one function per strategy plus `download_url`), `cli.py` (arguments, email resolution, the per-paper waterfall).
 
 ## Key implementation details
 
-- `EMAIL` is read from `.env` next to the script at module load time; `--email` overrides it in `main()`. If neither provides an email, the script exits. `HEADERS["User-Agent"]` is set in `main()` after `EMAIL` is final.
-- Download strategies are tried in order: Unpaywall → Europe PMC → PubMed Central → Semantic Scholar → direct DOI. A strategy returning `None` means no PDF was found; the next one is tried.
-- `try_pubmed_central` adds an extra `time.sleep(0.35)` between the eUtils search and the PDF fetch to stay within NCBI rate limits (3 req/s without an API key).
-- Folder names are sanitised: `{year}_{FirstAuthor}_{JournalNoSpecialChars}`. Duplicate base names get a `_2`, `_3`, … suffix via `unique_name()`.
-- `failed_downloads.txt` is only written when at least one paper fails; it records the DOI URL, reason, and original citation line.
+- Email resolution happens in `cli.main()`: `--email`, then the `EMAIL` environment variable, then `EMAIL` in `.env` in the current directory. No email exits with an error. The result goes into `strategies.EMAIL`, and `strategies.HEADERS["User-Agent"]` is set after it.
+- Strategies run in order: Unpaywall → Europe PMC → PubMed Central → Semantic Scholar → direct DOI. A strategy returning `None` means no PDF was found; the next one is tried.
+- `try_pubmed_central` sleeps 0.35 s between the eUtils search and the PDF fetch to stay within NCBI's 3 requests/s limit without an API key.
+- Paper folders are named `{year}_{FirstAuthor}_{JournalNoSpecialChars}`. Duplicate names get `_2`, `_3`, … from `unique_name()`.
+- `failed_downloads.txt` is written only when at least one paper fails. It records the DOI URL, reason, and original citation line.
 
-## When modifying this script
+## When modifying the code
 
-- Keep the five-strategy waterfall pattern. Do not collapse strategies into a single function — each one targets a different API with different response shapes.
-- The `EMAIL` global is intentionally mutable (overridden via `--email`). Do not convert it to a constant.
-- Avoid adding retry loops inside individual `try_*` functions; rate-limit handling belongs at the `process_paper` level via `--delay`.
-- Test with a small subset of `List_of_papers.txt` by passing a truncated copy to `--input` to avoid hammering APIs during development.
+- Keep the strategy waterfall: each strategy stays its own function, because each targets a different API with a different response shape.
+- `strategies.EMAIL` is intentionally a mutable module global set by `cli.main()`. Keep it a global.
+- Rate-limit handling belongs at the `process_paper` level via `--delay`; keep `try_*` functions single-attempt, with no retry loops.
+
+## Tests
+Every test calls `cli.main(argv)` through the fixtures in `tests/conftest.py` (`run`, `http`): a temporary paper list and output directory, `--delay 0`, `--email`, and HTTP faked with `responses`. An unregistered URL fails the test. Assert only on visible results (files written, request URLs, console output, exit), never on internal helpers. For a live check, pass a short paper list with `--input` rather than a full list.
