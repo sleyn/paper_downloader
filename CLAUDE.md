@@ -31,4 +31,4 @@ Default `--input` and `--output` are relative to the current directory.
 - Rate-limit handling belongs at the `process_paper` level via `--delay`; keep `try_*` functions single-attempt, with no retry loops.
 
 ## Tests
-Every test calls `cli.main(argv)` through the fixtures in `tests/conftest.py` (`run`, `http`): a temporary paper list and output directory, `--delay 0`, `--email`, and HTTP faked with `responses`. An unregistered URL fails the test. Assert only on visible results (files written, request URLs, console output, exit), never on internal helpers. For a live check, pass a short paper list with `--input` rather than a full list.
+Every test calls `cli.main(argv)`. The `run` fixture in `tests/conftest.py` builds the usual argv: a temporary paper list and output directory, `--delay 0` and `--email`. Tests of defaults or `--help` call `cli.main` directly. The autouse `http` fixture fakes HTTP with `responses`, so an unregistered URL fails any test. Assert only on visible results (files written, request URLs, console output, exit), never on internal helpers. For a live check, pass a short paper list with `--input` rather than a full list.

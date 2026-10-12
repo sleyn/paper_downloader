@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import responses
 
-from paper_downloader import cli, strategies
+from paper_downloader import cli
 
 # Large enough to pass the downloader's "more than 1 KB" check.
 FAKE_PDF = b"%PDF-1.4\n" + b"0" * 2048
@@ -16,13 +16,11 @@ def isolated_env(tmp_path, monkeypatch):
     """Run every test in an empty working directory with no EMAIL from the shell."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("EMAIL", raising=False)
-    monkeypatch.setattr(strategies, "EMAIL", "")
-    monkeypatch.setattr(strategies, "HEADERS", {})
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def http():
-    """Fake HTTP. A request to an unregistered URL fails the test.
+    """Fake HTTP for every test. A request to an unregistered URL fails the test.
 
     Strategies swallow exceptions, so the ConnectionError that `responses` raises for an
     unmatched request would be hidden. We check the recorded calls after the test instead.

@@ -1,4 +1,4 @@
-"""Classify paper list lines and extract each paper's DOI and citation metadata."""
+"""Extract a paper's DOI and paper metadata from a citation line."""
 
 import re
 
