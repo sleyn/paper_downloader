@@ -18,7 +18,6 @@ Each PDF is saved in a paper folder named `<year>_<FirstAuthor>_<Journal>`, as `
 The paper metadata comes from Crossref (one request per paper): the issue year, the first author's family name (or the consortium name), and the full journal title with only letters and digits kept, e.g. `2024_Leyn_NatureCommunications`.
 If Crossref lacks a field, the tool takes it from the citation line, then falls back to `0000` or `Unknown`. A citation line and a DOI line for the same paper get the same folder.
 Two papers that would share a name get `_2`, `_3`, and so on.
-Papers with no PDF found are logged to `<output>/failed_downloads.txt`.
 
 ## Install
 
@@ -86,6 +85,27 @@ The paper list is a text file with one paper per line. Each line is one of:
 
 Both kinds can be mixed in one list. Leading numbering (`12. `) and a period after the DOI are ignored.
 After reading the list, the tool prints how many lines of each kind it found.
+A line with text but no DOI is a **skipped line**: the tool lists each one with its line number and first 80 characters, and adds it to the failure log.
+
+## Failure log
+
+When a paper has no PDF from any strategy, or a line was skipped, the tool writes `<output>/failed_downloads.txt`.
+Each entry is a `# reason` comment followed by your original line, unchanged:
+
+```
+# PDF not found via any strategy
+2. doi:10.1000/missing
+# no DOI found (line 3)
+3. Smith J. A paper whose DOI I forgot to paste. Cell Reports. 2019.
+```
+
+The file is itself a paper list, so retrying only the failures is one command:
+
+```bash
+paper-downloader --input papers/failed_downloads.txt
+```
+
+After a run with no failures and no skipped lines, the tool deletes any old failure log.
 
 ## Output structure
 

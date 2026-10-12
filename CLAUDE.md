@@ -23,7 +23,7 @@ Default `--input` and `--output` are relative to the current directory.
 - Every PDF goes through `strategies.download_url`, which accepts only status 200, more than 1 KB, and a PDF content type or `%PDF` header.
 - DOIs in URL paths go through `quote_doi` (percent-encoded, `/` kept); query values go through `params=`.
 - Paper folders are named `{year}_{FirstAuthor}_{Journal}` from `metadata.fetch_crossref`, falling back field by field to the citation line, then `0000` / `Unknown` (`resolve_metadata`). Duplicate names get `_2`, `_3`, … from `unique_name()`.
-- `failed_downloads.txt` is written only when at least one paper fails. It records the DOI URL, reason, and original citation line.
+- The failure log (`failed_downloads.txt`) holds a `# reason` line plus the original line for each failed paper and skipped line, so it can be passed back with `--input`. It is deleted after a run with neither.
 
 ## When modifying the code
 

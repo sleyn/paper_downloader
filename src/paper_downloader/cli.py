@@ -75,6 +75,12 @@ def process_paper(
 # Entry point
 # ---------------------------------------------------------------------------
 
+def write_failure_log(path: Path, failures: list[tuple[Line, str]]) -> None:
+    """Write each failure as a `# reason` comment followed by its original line, so the file is a paper list."""
+    entries = sorted(failures, key=lambda failure: failure[0].number)
+    path.write_text("".join(f"# {reason}\n{line.raw}\n" for line, reason in entries), encoding="utf-8")
+
+
 def count_kinds(lines: list[Line]) -> str:
     """Summarise how many lines of each kind the paper list holds, e.g. "2 DOI lines, 1 comment"."""
     parts = []
@@ -156,12 +162,18 @@ def main(argv: list[str] | None = None) -> None:
         for number, raw in enumerate(input_path.read_text(encoding="utf-8").splitlines(), start=1)
     ]
     papers = [line for line in lines if line.kind in (CITATION_LINE, DOI_LINE)]
+    skipped = [line for line in lines if line.kind == SKIPPED_LINE]
 
     print(f"Read {input_path}: {count_kinds(lines)}")
-    print(f"Output directory: {output_dir}\n")
+    if skipped:
+        print(f"\nWarning: {len(skipped)} line(s) with no DOI found were skipped:")
+        for line in skipped:
+            print(f"  line {line.number}: {line.raw.strip()[:80]}")
+    print(f"\nOutput directory: {output_dir}\n")
 
     seen_names: dict[str, int] = {}
-    failures: list[str] = []
+    # (line, reason) for every line that goes in the failure log.
+    failures: list[tuple[Line, str]] = [(line, f"no DOI found (line {line.number})") for line in skipped]
 
     session = requests.Session()
 
@@ -176,14 +188,15 @@ def main(argv: list[str] | None = None) -> None:
 
         error = process_paper(paper, folder, name, session, args.delay)
         if error:
-            failures.append(f"{paper.doi_url}  # {error}  | {paper.raw.strip()}")
+            failures.append((paper, error))
         print()
 
     if failures:
-        failed_log.write_text("\n".join(failures) + "\n", encoding="utf-8")
-        print(f"\n{len(failures)} paper(s) could not be downloaded.")
+        write_failure_log(failed_log, failures)
+        print(f"\n{len(failures)} line(s) need attention.")
         print(f"See: {failed_log}")
     else:
+        failed_log.unlink(missing_ok=True)
         print("\nAll papers downloaded successfully.")
 
 
