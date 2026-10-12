@@ -223,3 +223,7 @@ papers/
 
 # Local issue tracker (tickets)
 .scratch/
+
+# Local agent tooling (installed skills)
+.agents/
+.claude/
