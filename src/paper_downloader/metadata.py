@@ -66,10 +66,11 @@ def make_folder_name(meta: PaperMetadata) -> str:
     return f"{meta.year or '0000'}_{author}_{journal_slug}"
 
 
-def unique_name(base: str, seen: dict) -> str:
-    """Return a unique name by appending _2, _3, … if base already used."""
-    if base not in seen:
-        seen[base] = 1
-        return base
-    seen[base] += 1
-    return f"{base}_{seen[base]}"
+def unique_name(base: str, used: set[str]) -> str:
+    """Return `base`, or `base_2`, `base_3`, … if taken, and mark the result as used."""
+    name, n = base, 1
+    while name in used:
+        n += 1
+        name = f"{base}_{n}"
+    used.add(name)
+    return name

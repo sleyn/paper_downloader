@@ -61,6 +61,7 @@ uv run paper-downloader [options]   # inside this repo
 | `--output` | `papers` | Root directory for downloaded PDFs |
 | `--delay` | `1.0` | Seconds to wait between HTTP requests |
 | `--email` | *(see Configuration)* | Email for API requests |
+| `--force` | off | Download every paper again, even ones already present |
 | `--debug` | off | Print each HTTP request and response |
 
 Both default paths are relative to the current directory.
@@ -86,6 +87,18 @@ The paper list is a text file with one paper per line. Each line is one of:
 Both kinds can be mixed in one list. Leading numbering (`12. `) and a period after the DOI are ignored.
 After reading the list, the tool prints how many lines of each kind it found.
 A line with text but no DOI is a **skipped line**: the tool lists each one with its line number and first 80 characters, and adds it to the failure log.
+
+## Re-running a list
+
+The manifest, `<output>/manifest.tsv`, records every downloaded paper as a tab-separated row: `doi`, `folder`, `strategy` (the one that found the PDF) and `date`.
+Each row is written as soon as its PDF is saved, so an interrupted run keeps its progress.
+
+On the next run, a paper whose DOI is in the manifest and whose PDF still exists is skipped without any request, Crossref included.
+So you can keep adding to one paper list and re-run it. To get a paper again, delete its PDF and re-run.
+`--force` downloads every paper again and replaces its manifest row.
+New paper folders never reuse a name already in the manifest.
+
+The run ends with a summary of papers downloaded, already present and failed.
 
 ## Failure log
 
@@ -113,7 +126,8 @@ After a run with no failures and no skipped lines, the tool deletes any old fail
 papers/
   2024_Leyn_NatureCommunications/
     2024_Leyn_NatureCommunications.pdf
-  failed_downloads.txt   # only written when some papers could not be fetched
+  manifest.tsv           # one row per downloaded paper
+  failed_downloads.txt   # only present after a run with failures or skipped lines
 ```
 
 ## Development
