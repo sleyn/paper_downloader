@@ -224,6 +224,7 @@ papers/
 # Local issue tracker (tickets)
 .scratch/
 
-# Local agent tooling (installed skills)
+# Local agent tooling (installed skills and their lock file)
 .agents/
 .claude/
+skills-lock.json
