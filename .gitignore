@@ -220,3 +220,6 @@ __marimo__/
 
 # Downloaded papers (default --output)
 papers/
+
+# Local issue tracker (tickets)
+.scratch/
